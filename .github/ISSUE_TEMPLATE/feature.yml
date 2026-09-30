@@ -1,0 +1,27 @@
+name: 기능
+description: WBS 태스크 또는 새 기능
+labels: ["type:feat"]
+body:
+  - type: input
+    id: wbs
+    attributes:
+      label: WBS ID
+      placeholder: "1.4"
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: 예상 시간
+      placeholder: "2h"

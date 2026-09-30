@@ -1,0 +1,26 @@
+id	milestone	title	estimate	labels
+0.4	M0 준비	GitHub 레포 생성 & push	0.5h	type:chore
+0.5	M0 준비	라벨·마일스톤·이슈 일괄 생성	0.5h	type:chore
+0.6	M0 준비	Vercel 연결 & 프리뷰 배포 확인	0.5h	type:chore
+0.7	M0 준비	레퍼런스 게임 3개 플레이 & 메모	2h	type:docs
+0.8	M0 준비	에셋 후보 수집 (스프라이트, 효과음)	1.5h	type:chore
+1.1	M1 코어 루프	오픈 이슈 3개 결정 (상점 일시정지, 하루 단위, 오답 페널티)	1h	type:docs
+1.2	M1 코어 루프	요구 발생 템포 & 울음 속도 1차 튜닝	2h	type:feat,area:balance
+1.3	M1 코어 루프	성공/실패 피드백 강화	2.5h	type:feat,area:ui
+1.4	M1 코어 루프	콤보 시스템 (연속 성공 보상 배율)	3h	type:feat,area:engine
+1.5	M1 코어 루프	탭 비활성화 시 자동 일시정지	1.5h	type:feat,area:engine
+1.6	M1 코어 루프	테스트 플레이 2명 → Go/No-Go	1.5h	type:docs
+2.1	M2 경제	밸런스 시트 작성	3h	type:docs,area:balance
+2.2	M2 경제	하루 시스템 (60초) + 정산 화면	4h	type:feat,area:engine,area:ui
+2.3	M2 경제	날짜별 난이도 곡선	2h	type:feat,area:balance
+2.4	M2 경제	업그레이드 효과 체감 조정	2h	type:feat,area:balance
+2.5	M2 경제	저장 버전 마이그레이션 테스트	1h	type:feat,area:engine
+3.1	M3 손맛	아기 일러스트/스프라이트 교체 (타임박스 4h)	4h	type:feat,area:ui
+3.2	M3 손맛	효과음 + 음소거 토글	3h	type:feat,area:ui
+3.3	M3 손맛	튜토리얼 (첫 요구 3개 가이드)	2.5h	type:feat,area:ui
+3.4	M3 손맛	반응형·접근성 점검	1.5h	type:chore,area:ui
+4.1	M4 출시	PWA (manifest, 아이콘, 오프라인 캐시)	3h	type:feat
+4.2	M4 출시	프로덕션 배포 + OG 이미지	1.5h	type:chore
+4.3	M4 출시	itch.io HTML5 업로드	1.5h	type:chore
+4.4	M4 출시	플레이 GIF + README 포트폴리오화	2.5h	type:docs
+4.5	M4 출시	피드백 수집 & 회고	1.5h	type:docs
