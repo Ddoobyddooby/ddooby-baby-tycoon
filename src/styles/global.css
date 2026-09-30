@@ -1,0 +1,332 @@
+/* ── 디자인 토큰: "새벽 3시 아기방" ─────────────────────────
+   벽은 어둑한 남색, 빛은 수유등의 노란빛 하나.
+   울음이 차오를수록 수유등 빛이 빨갛게 번진다.            */
+:root {
+  --wall: #2f3263;
+  --wall-deep: #23254a;
+  --nightlight: #ffd27a;
+  --milk: #fff8ee;
+  --blanket: #f4a6b8;
+  --cry: #e8505b;
+  --wood: #c98b5a;
+  --ink-soft: #c9cbe8;
+
+  --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  --radius-sheet: 28px;
+  --radius-btn: 18px;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(
+    120% 70% at 50% 38%,
+    #3a3d75 0%,
+    var(--wall) 45%,
+    var(--wall-deep) 100%
+  );
+  color: var(--milk);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--nightlight);
+  outline-offset: 3px;
+}
+
+/* ── 레이아웃 ─────────────────────────────── */
+.game {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* ── HUD ──────────────────────────────────── */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hud__coins {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--nightlight);
+}
+
+.hud__stat {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.hud__shop {
+  padding: 8px 14px;
+  border: 1.5px solid var(--nightlight);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-display);
+}
+
+/* ── 아기 침대 ─────────────────────────────── */
+.crib {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.crib__bubble {
+  min-height: 2.6em;
+  padding: 10px 18px;
+  border-radius: 20px 20px 20px 4px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--ink-soft);
+}
+
+.crib__bubble.is-visible {
+  background: var(--milk);
+  color: var(--wall-deep);
+}
+
+.crib__baby {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(62vw, 240px);
+  aspect-ratio: 1;
+}
+
+.crib__ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.crib__ring-track {
+  fill: rgba(255, 210, 122, 0.08);
+  stroke: rgba(255, 248, 238, 0.12);
+  stroke-width: 10;
+}
+
+.crib__ring-fill {
+  fill: none;
+  stroke: var(--nightlight);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke 0.3s;
+}
+
+.crib__baby.is-danger .crib__ring-fill {
+  stroke: var(--cry);
+}
+
+.crib__face {
+  font-size: clamp(4.5rem, 22vw, 6.5rem);
+  line-height: 1;
+}
+
+.crib__baby.is-danger .crib__face {
+  animation: wail 0.35s ease-in-out infinite alternate;
+}
+
+.crib__feedback {
+  height: 1.6em;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--nightlight);
+  animation: pop 0.6s ease-out forwards;
+}
+
+@keyframes wail {
+  from {
+    transform: rotate(-6deg);
+  }
+  to {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+/* ── 행동 버튼 (엄지 영역) ─────────────────── */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actions__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 64px;
+  border: 0;
+  border-radius: var(--radius-btn);
+  background: var(--milk);
+  color: var(--wall-deep);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  box-shadow: 0 4px 0 var(--wood);
+  transition: transform 0.06s;
+}
+
+.actions__btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--wood);
+}
+
+.actions__icon {
+  font-size: 1.5rem;
+}
+
+/* ── 상점 바텀시트 ─────────────────────────── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20, 21, 45, 0.6);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 80%;
+  overflow-y: auto;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--milk);
+  color: var(--wall-deep);
+  animation: rise 0.22s ease-out;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+.sheet__close {
+  border: 0;
+  background: none;
+  text-decoration: underline;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.shop {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dashed rgba(47, 50, 99, 0.2);
+}
+
+.shop__icon {
+  font-size: 1.8rem;
+}
+
+.shop__body {
+  flex: 1;
+}
+
+.shop__body p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.shop__body small {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.shop__buy {
+  min-width: 76px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--nightlight);
+  font-family: var(--font-display);
+}
+
+.shop__buy:disabled {
+  background: rgba(47, 50, 99, 0.15);
+  color: rgba(35, 37, 74, 0.45);
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
