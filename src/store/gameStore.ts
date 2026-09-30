@@ -54,7 +54,7 @@ export const useGame = create<GameStore>()(
       reset: () => set({ ...createInitialState(), lastResult: null, resultSeq: 0 }),
     }),
     {
-      name: "baby-tycoon-save",
+      name: "ddooby-baby-tycoon-save",
       version: 1,
       // 진행 중인 요구/울음은 저장하지 않는다 (재접속하자마자 울음 폭발 방지)
       partialize: (s) => ({ coins: s.coins, levels: s.levels, stats: s.stats }),
