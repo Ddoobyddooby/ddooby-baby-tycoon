@@ -9,7 +9,11 @@ import { Shop } from "./components/Shop";
 export default function App() {
   const [shopOpen, setShopOpen] = useState(false);
 
-  useEffect(() => startLoop((dt) => useGame.getState().tick(dt)), []);
+  // 상점이 열려 있는 동안은 루프를 멈춘다 (닫으면 startLoop 가 시계를 새로 잡으므로 dt 가 튀지 않는다)
+  useEffect(() => {
+    if (shopOpen) return;
+    return startLoop((dt) => useGame.getState().tick(dt));
+  }, [shopOpen]);
 
   return (
     <main className="game">
