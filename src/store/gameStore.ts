@@ -5,6 +5,7 @@ import {
   buy,
   createInitialState,
   resolve,
+  startNextDay,
   tick,
   type GameState,
   type ResolveResult,
@@ -17,10 +18,15 @@ interface GameStore extends GameState {
   tick: (dt: number) => void;
   act: (action: Need) => void;
   buyUpgrade: (id: UpgradeId) => void;
+  nextDay: () => void;
   reset: () => void;
 }
 
 const pickState = (s: GameStore): GameState => ({
+  day: s.day,
+  dayTime: s.dayTime,
+  phase: s.phase,
+  today: s.today,
   coins: s.coins,
   need: s.need,
   cry: s.cry,
@@ -51,13 +57,15 @@ export const useGame = create<GameStore>()(
         if (next) set(next);
       },
 
+      nextDay: () => set(startNextDay(pickState(get()))),
+
       reset: () => set({ ...createInitialState(), lastResult: null, resultSeq: 0 }),
     }),
     {
       name: "ddooby-baby-tycoon-save",
       version: 1,
-      // 진행 중인 요구/울음은 저장하지 않는다 (재접속하자마자 울음 폭발 방지)
-      partialize: (s) => ({ coins: s.coins, levels: s.levels, stats: s.stats }),
+      // 진행 중인 요구/울음/하루 시계는 저장하지 않는다 (재접속하자마자 울음 폭발 방지, 하루는 처음부터)
+      partialize: (s) => ({ day: s.day, coins: s.coins, levels: s.levels, stats: s.stats }),
     },
   ),
 );

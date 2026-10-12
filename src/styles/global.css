@@ -330,3 +330,76 @@ button:focus-visible {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── 하루 정산 ─────────────────────────────── */
+.sheet-backdrop--center {
+  align-items: center;
+  padding: 16px;
+}
+
+.sheet--center {
+  width: 100%;
+  max-width: 360px;
+  border-radius: var(--radius-sheet);
+  animation: pop 0.22s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.summary__title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-align: center;
+}
+
+.summary {
+  margin: 0;
+}
+
+.summary > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(47, 50, 99, 0.2);
+}
+
+.summary dt {
+  opacity: 0.75;
+}
+
+.summary dd {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.summary__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.summary__actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-btn);
+  border: 2px solid var(--wall);
+}
+
+.summary__secondary {
+  background: none;
+}
+
+.summary__primary {
+  background: var(--nightlight);
+  font-family: var(--font-display);
+}
