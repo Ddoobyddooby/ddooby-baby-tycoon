@@ -341,10 +341,10 @@ button:focus-visible {
   width: 100%;
   max-width: 360px;
   border-radius: var(--radius-sheet);
-  animation: pop 0.22s ease-out;
+  animation: dialog-pop 0.22s ease-out;
 }
 
-@keyframes pop {
+@keyframes dialog-pop {
   from {
     transform: scale(0.94);
     opacity: 0;
