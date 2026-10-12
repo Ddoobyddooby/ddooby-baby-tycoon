@@ -1,4 +1,4 @@
-import { NEED_META } from "../game/balance";
+import { BALANCE, NEED_META } from "../game/balance";
 import { useGame } from "../store/gameStore";
 
 const RADIUS = 92;
@@ -16,6 +16,7 @@ export function Crib() {
   const cry = useGame((s) => s.cry);
   const lastResult = useGame((s) => s.lastResult);
   const resultSeq = useGame((s) => s.resultSeq);
+  const combo = useGame((s) => s.combo);
 
   const danger = need !== null && cry >= 75;
   const dash = CIRCUMFERENCE * (1 - cry / 100);
@@ -48,6 +49,15 @@ export function Crib() {
           {faceFor(cry, need !== null)}
         </span>
       </div>
+
+      <p className={`crib__combo ${combo >= 2 ? "is-visible" : ""}`}>
+        {combo >= 2 && (
+          <>
+            <span aria-hidden>🔥</span> {combo}콤보
+            {combo >= BALANCE.comboMax && " (MAX)"}
+          </>
+        )}
+      </p>
 
       <p className="crib__feedback" key={resultSeq}>
         {lastResult?.kind === "ok" && `+${lastResult.reward}`}

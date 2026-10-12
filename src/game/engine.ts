@@ -12,6 +12,7 @@ export interface DayStats {
   resolved: number;
   meltdowns: number;
   earned: number;
+  bestCombo: number;
 }
 
 export interface GameState {
@@ -23,6 +24,8 @@ export interface GameState {
   phase: Phase;
   /** 오늘의 기록. 다음 날이 되면 초기화 */
   today: DayStats;
+  /** 연속으로 맞게 대응한 횟수. 오답/폭발/하루 종료로 0 이 된다 */
+  combo: number;
   coins: number;
   need: Need | null;
   /** 0 ~ 100 */
@@ -31,9 +34,10 @@ export interface GameState {
   stats: { resolved: number; meltdowns: number; totalEarned: number };
 }
 
-export type ResolveResult = { kind: "ok"; reward: number } | { kind: "wrong" } | { kind: "idle" };
+export type ResolveResult =
+  { kind: "ok"; reward: number; combo: number } | { kind: "wrong" } | { kind: "idle" };
 
-const emptyDay = (): DayStats => ({ resolved: 0, meltdowns: 0, earned: 0 });
+const emptyDay = (): DayStats => ({ resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 });
 
 export function createInitialState(): GameState {
   const levels = Object.fromEntries(UPGRADE_IDS.map((id) => [id, 0])) as Record<UpgradeId, number>;
@@ -42,6 +46,7 @@ export function createInitialState(): GameState {
     dayTime: 0,
     phase: "playing",
     today: emptyDay(),
+    combo: 0,
     coins: 0,
     need: null,
     cry: 0,
@@ -67,6 +72,11 @@ export function rewardMultiplier(state: GameState): number {
   return 1 + bonus;
 }
 
+/** 콤보에 따라 보상 배율에 더해지는 값 */
+export function comboBonus(combo: number): number {
+  return Math.min(combo, BALANCE.comboMax) * BALANCE.comboBonusPerStep;
+}
+
 export function upgradeCost(id: UpgradeId, level: number): number {
   const def = UPGRADES[id];
   return Math.round(def.baseCost * Math.pow(def.costGrowth, level));
@@ -80,7 +90,7 @@ export function tick(state: GameState, rawDt: number, rng: Rng = Math.random): G
   const dayTime = state.dayTime + dt;
   if (dayTime >= BALANCE.dayLength) {
     // 하루 종료: 남은 요구는 페널티 없이 사라진다
-    return { ...state, dayTime: BALANCE.dayLength, phase: "summary", need: null, cry: 0 };
+    return { ...state, dayTime: BALANCE.dayLength, phase: "summary", need: null, cry: 0, combo: 0 };
   }
   return tickNeed({ ...state, dayTime }, dt, rng);
 }
@@ -103,6 +113,7 @@ function tickNeed(state: GameState, dt: number, rng: Rng): GameState {
       ...state,
       need: null,
       cry: 0,
+      combo: 0,
       coins: Math.max(0, state.coins - BALANCE.meltdownPenalty),
       stats: { ...state.stats, meltdowns: state.stats.meltdowns + 1 },
       today: { ...state.today, meltdowns: state.today.meltdowns + 1 },
@@ -119,17 +130,20 @@ export function resolve(
 
   if (action !== state.need) {
     const cry = Math.min(99.9, state.cry + BALANCE.wrongActionCry);
-    return { state: { ...state, cry }, result: { kind: "wrong" } };
+    return { state: { ...state, cry, combo: 0 }, result: { kind: "wrong" } };
   }
 
   const speedRatio = Math.max(BALANCE.minRewardRatio, 1 - state.cry / 100);
-  const reward = Math.max(1, Math.round(BALANCE.baseReward * speedRatio * rewardMultiplier(state)));
+  const multiplier = rewardMultiplier(state) + comboBonus(state.combo);
+  const reward = Math.max(1, Math.round(BALANCE.baseReward * speedRatio * multiplier));
+  const combo = state.combo + 1;
 
   return {
     state: {
       ...state,
       need: null,
       cry: 0,
+      combo,
       coins: state.coins + reward,
       stats: {
         ...state.stats,
@@ -140,9 +154,10 @@ export function resolve(
         ...state.today,
         resolved: state.today.resolved + 1,
         earned: state.today.earned + reward,
+        bestCombo: Math.max(state.today.bestCombo, combo),
       },
     },
-    result: { kind: "ok", reward },
+    result: { kind: "ok", reward, combo },
   };
 }
 

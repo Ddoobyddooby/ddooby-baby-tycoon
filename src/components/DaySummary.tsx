@@ -28,6 +28,10 @@ export function DaySummary({ onOpenShop }: { onOpenShop: () => void }) {
             <dd>{today.meltdowns}</dd>
           </div>
           <div>
+            <dt>최고 콤보</dt>
+            <dd>🔥 {today.bestCombo}</dd>
+          </div>
+          <div>
             <dt>번 코인</dt>
             <dd>🪙 {today.earned}</dd>
           </div>

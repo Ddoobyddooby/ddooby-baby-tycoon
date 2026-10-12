@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BALANCE } from "./balance";
 import {
   buy,
+  comboBonus,
   createInitialState,
   crySpeedFor,
   resolve,
@@ -11,6 +12,8 @@ import {
   upgradeCost,
   type GameState,
 } from "./engine";
+
+const emptyToday = { resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 };
 
 const withNeed = (overrides: Partial<GameState> = {}): GameState => ({
   ...createInitialState(),
@@ -62,11 +65,16 @@ describe("resolve", () => {
   it("맞는 대응: 빨리 할수록 보상이 크다", () => {
     const fast = resolve(withNeed({ cry: 0 }), "hungry");
     const slow = resolve(withNeed({ cry: 60 }), "hungry");
-    expect(fast.result).toEqual({ kind: "ok", reward: BALANCE.baseReward });
+    expect(fast.result).toEqual({ kind: "ok", reward: BALANCE.baseReward, combo: 1 });
     expect(slow.result.kind === "ok" && slow.result.reward).toBeLessThan(BALANCE.baseReward);
     expect(fast.state.need).toBeNull();
     expect(fast.state.stats.resolved).toBe(1);
-    expect(fast.state.today).toEqual({ resolved: 1, meltdowns: 0, earned: BALANCE.baseReward });
+    expect(fast.state.today).toEqual({
+      resolved: 1,
+      meltdowns: 0,
+      earned: BALANCE.baseReward,
+      bestCombo: 1,
+    });
   });
 
   it("최소 보상 비율이 보장된다", () => {
@@ -74,6 +82,7 @@ describe("resolve", () => {
     expect(result).toEqual({
       kind: "ok",
       reward: Math.round(BALANCE.baseReward * BALANCE.minRewardRatio),
+      combo: 1,
     });
   });
 
@@ -163,7 +172,7 @@ describe("day cycle", () => {
       nearEnd({
         day: 3,
         coins: 77,
-        today: { resolved: 5, meltdowns: 1, earned: 40 },
+        today: { resolved: 5, meltdowns: 1, earned: 40, bestCombo: 3 },
         levels: { ...createInitialState().levels, rattle: 2 },
       }),
       0.1,
@@ -172,7 +181,7 @@ describe("day cycle", () => {
     expect(next.day).toBe(4);
     expect(next.phase).toBe("playing");
     expect(next.dayTime).toBe(0);
-    expect(next.today).toEqual({ resolved: 0, meltdowns: 0, earned: 0 });
+    expect(next.today).toEqual({ resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 });
     expect(next.coins).toBe(77);
     expect(next.levels.rattle).toBe(2);
   });
@@ -180,5 +189,60 @@ describe("day cycle", () => {
   it("진행 중인 하루에는 다음 날로 넘어갈 수 없다", () => {
     const state = createInitialState();
     expect(startNextDay(state)).toBe(state);
+  });
+});
+
+describe("combo", () => {
+  it("보너스는 콤보 수 × 단계값이고 상한이 있다", () => {
+    expect(comboBonus(0)).toBe(0);
+    expect(comboBonus(2)).toBeCloseTo(2 * BALANCE.comboBonusPerStep);
+    expect(comboBonus(99)).toBeCloseTo(BALANCE.comboMax * BALANCE.comboBonusPerStep);
+  });
+
+  it("맞게 대응하면 콤보가 쌓이고 오늘의 최고 콤보가 갱신된다", () => {
+    let state = withNeed();
+    for (let i = 0; i < 3; i++) {
+      state = resolve({ ...state, need: "hungry" }, "hungry").state;
+    }
+    expect(state.combo).toBe(3);
+    expect(state.today.bestCombo).toBe(3);
+  });
+
+  it("보상에 현재 콤보의 보너스가 붙는다 (첫 성공은 보너스 없음)", () => {
+    const first = resolve(withNeed({ combo: 0 }), "hungry").result;
+    const third = resolve(withNeed({ combo: 2 }), "hungry").result;
+    expect(first.kind === "ok" && first.reward).toBe(BALANCE.baseReward);
+    expect(third.kind === "ok" && third.reward).toBe(
+      Math.round(BALANCE.baseReward * (1 + comboBonus(2))),
+    );
+  });
+
+  it("업그레이드 배율과 콤보 보너스는 더해진다 (곱하지 않는다)", () => {
+    const state = withNeed({
+      combo: 2,
+      levels: { ...createInitialState().levels, lullaby: 1 },
+    });
+    const { result } = resolve(state, "hungry");
+    expect(result.kind === "ok" && result.reward).toBe(
+      Math.round(BALANCE.baseReward * (1 + 0.2 + comboBonus(2))),
+    );
+  });
+
+  it("틀린 대응은 콤보를 끊는다 (최고 기록은 유지)", () => {
+    const { state } = resolve(
+      withNeed({ combo: 4, today: { ...emptyToday, bestCombo: 4 } }),
+      "diaper",
+    );
+    expect(state.combo).toBe(0);
+    expect(state.today.bestCombo).toBe(4);
+  });
+
+  it("울음 폭발은 콤보를 끊는다", () => {
+    expect(tick(withNeed({ cry: 99.9, combo: 3 }), 0.1).combo).toBe(0);
+  });
+
+  it("하루가 끝나면 콤보가 끊긴다", () => {
+    const state = { ...createInitialState(), combo: 3, dayTime: BALANCE.dayLength - 0.05 };
+    expect(tick(state, 0.1).combo).toBe(0);
   });
 });
