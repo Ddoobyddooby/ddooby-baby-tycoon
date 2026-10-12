@@ -160,6 +160,19 @@ button:focus-visible {
   animation: wail 0.35s ease-in-out infinite alternate;
 }
 
+.crib__combo {
+  height: 1.4em;
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--blanket);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.crib__combo.is-visible {
+  opacity: 1;
+}
+
 .crib__feedback {
   height: 1.6em;
   margin: 0;

@@ -27,6 +27,7 @@ const pickState = (s: GameStore): GameState => ({
   dayTime: s.dayTime,
   phase: s.phase,
   today: s.today,
+  combo: s.combo,
   coins: s.coins,
   need: s.need,
   cry: s.cry,

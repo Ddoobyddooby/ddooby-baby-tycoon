@@ -28,6 +28,10 @@ export const BALANCE = {
   baseReward: 10,
   /** 울음 100 직전에 해결해도 받는 최소 보상 비율 */
   minRewardRatio: 0.3,
+  /** 콤보 1단계당 보상 배율에 더해지는 값 */
+  comboBonusPerStep: 0.1,
+  /** 보너스가 붙는 최대 콤보 수 (이 이상은 보너스가 늘지 않는다) */
+  comboMax: 5,
   /** 프레임이 길게 끊겼을 때(탭 전환 등) 한 번에 처리할 최대 dt */
   maxDt: 0.25,
 } as const;

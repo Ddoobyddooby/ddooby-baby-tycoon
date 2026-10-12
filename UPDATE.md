@@ -52,4 +52,5 @@
 
 - [x] 상점을 열면 게임 일시정지 (`App.tsx`)
 - [x] 하루(60초) 단위 + 정산 화면 (`engine.startNextDay`, `DaySummary`)
-- [ ] 다음 후보: 날짜별 난이도 곡선, 콤보 보너스
+- [x] 콤보 보너스 (`engine.comboBonus`)
+- [ ] 다음 후보: 날짜별 난이도 곡선
