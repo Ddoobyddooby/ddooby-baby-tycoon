@@ -14,6 +14,8 @@ export const NEED_META: Record<Need, { label: string; icon: string; action: stri
 };
 
 export const BALANCE = {
+  /** 하루의 길이(초). 끝나면 정산 화면 */
+  dayLength: 60,
   /** 요구가 없을 때 새 요구가 생기는 초당 발생률 (포아송 λ) */
   needRatePerSec: 0.5,
   /** 요구가 있을 때 울음 게이지(0~100)가 초당 차오르는 양 */

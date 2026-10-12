@@ -6,6 +6,7 @@ import {
   crySpeedFor,
   resolve,
   rewardMultiplier,
+  startNextDay,
   tick,
   upgradeCost,
   type GameState,
@@ -25,9 +26,13 @@ describe("tick", () => {
     expect(next.cry).toBe(0);
   });
 
-  it("확률에 안 걸리면 같은 객체를 돌려준다 (불필요한 리렌더 방지)", () => {
+  it("확률에 안 걸리면 요구는 생기지 않는다", () => {
+    expect(tick(createInitialState(), 0.1, () => 0.999).need).toBeNull();
+  });
+
+  it("dt 0 이면 같은 객체를 돌려준다", () => {
     const state = createInitialState();
-    expect(tick(state, 0.1, () => 0.999)).toBe(state);
+    expect(tick(state, 0)).toBe(state);
   });
 
   it("요구가 있으면 울음 게이지가 dt 에 비례해 오른다", () => {
@@ -45,6 +50,7 @@ describe("tick", () => {
     expect(next.need).toBeNull();
     expect(next.coins).toBe(20 - BALANCE.meltdownPenalty);
     expect(next.stats.meltdowns).toBe(1);
+    expect(next.today.meltdowns).toBe(1);
   });
 
   it("코인은 음수가 되지 않는다", () => {
@@ -60,6 +66,7 @@ describe("resolve", () => {
     expect(slow.result.kind === "ok" && slow.result.reward).toBeLessThan(BALANCE.baseReward);
     expect(fast.state.need).toBeNull();
     expect(fast.state.stats.resolved).toBe(1);
+    expect(fast.state.today).toEqual({ resolved: 1, meltdowns: 0, earned: BALANCE.baseReward });
   });
 
   it("최소 보상 비율이 보장된다", () => {
@@ -117,5 +124,61 @@ describe("upgrades", () => {
       levels: { ...createInitialState().levels, mobile: 5 },
     };
     expect(buy(state, "mobile")).toBeNull();
+  });
+});
+
+describe("day cycle", () => {
+  const nearEnd = (overrides: Partial<GameState> = {}): GameState => ({
+    ...createInitialState(),
+    dayTime: BALANCE.dayLength - 0.05,
+    ...overrides,
+  });
+
+  it("tick 마다 하루 시계가 흐른다", () => {
+    expect(tick(createInitialState(), 0.1, () => 0.999).dayTime).toBeCloseTo(0.1);
+  });
+
+  it("하루가 끝나면 정산 단계가 되고 진행 중이던 요구는 페널티 없이 사라진다", () => {
+    const next = tick(nearEnd({ need: "hungry", cry: 50, coins: 20 }), 0.1);
+    expect(next.phase).toBe("summary");
+    expect(next.dayTime).toBe(BALANCE.dayLength);
+    expect(next.need).toBeNull();
+    expect(next.cry).toBe(0);
+    expect(next.coins).toBe(20);
+    expect(next.stats.meltdowns).toBe(0);
+  });
+
+  it("정산 단계에서는 시간이 흐르지 않고 요구도 생기지 않는다", () => {
+    const summary = tick(nearEnd(), 0.1);
+    expect(tick(summary, 0.1, () => 0)).toBe(summary);
+  });
+
+  it("정산 단계에서 눌러도 아무 일도 없다", () => {
+    const summary = { ...nearEnd(), phase: "summary" as const };
+    expect(resolve(summary, "hungry")).toEqual({ state: summary, result: { kind: "idle" } });
+  });
+
+  it("다음 날을 시작하면 날짜 +1, 시계와 오늘 기록 초기화, 코인/레벨은 유지", () => {
+    const summary = tick(
+      nearEnd({
+        day: 3,
+        coins: 77,
+        today: { resolved: 5, meltdowns: 1, earned: 40 },
+        levels: { ...createInitialState().levels, rattle: 2 },
+      }),
+      0.1,
+    );
+    const next = startNextDay(summary);
+    expect(next.day).toBe(4);
+    expect(next.phase).toBe("playing");
+    expect(next.dayTime).toBe(0);
+    expect(next.today).toEqual({ resolved: 0, meltdowns: 0, earned: 0 });
+    expect(next.coins).toBe(77);
+    expect(next.levels.rattle).toBe(2);
+  });
+
+  it("진행 중인 하루에는 다음 날로 넘어갈 수 없다", () => {
+    const state = createInitialState();
+    expect(startNextDay(state)).toBe(state);
   });
 });

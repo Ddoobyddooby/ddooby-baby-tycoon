@@ -1,15 +1,20 @@
+import { BALANCE } from "../game/balance";
 import { useGame } from "../store/gameStore";
 
 export function Hud({ onOpenShop }: { onOpenShop: () => void }) {
   const coins = useGame((s) => s.coins);
-  const resolved = useGame((s) => s.stats.resolved);
+  const day = useGame((s) => s.day);
+  // 초 단위로만 구독해서 매 프레임 리렌더하지 않는다
+  const secondsLeft = useGame((s) => Math.ceil(BALANCE.dayLength - s.dayTime));
 
   return (
     <header className="hud">
       <div className="hud__coins" aria-label={`코인 ${coins}개`}>
         <span aria-hidden>🪙</span> {coins.toLocaleString()}
       </div>
-      <div className="hud__stat">달래준 횟수 {resolved}</div>
+      <div className="hud__stat" aria-label={`${day}일차, 남은 시간 ${secondsLeft}초`}>
+        {day}일차 · ⏱ {secondsLeft}s
+      </div>
       <button type="button" className="hud__shop" onClick={onOpenShop}>
         육아템 상점
       </button>

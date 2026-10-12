@@ -107,7 +107,7 @@ components ──읽기/액션──▶ store (Zustand) ──호출──▶ ga
 
 - [ ] **밸런스가 너무 쉬움**: 첫 업그레이드가 약 12초 만에 가능. M2에서 조정 ([밸런스 시트](docs/04-balance.md))
 - [x] **상점을 열면 게임 일시정지** (2026-10-12 결정·구현)
-- [ ] **무한 모드 vs 하루(60초) 단위** 진행
+- [x] **하루(60초) 단위 + 정산 화면** (2026-10-12 결정·구현)
 - [ ] **오답 페널티(+10 울음)** 가 적절한지
 
 위 세 가지 결정은 M1 첫 태스크(WBS 1.1)에서 직접 플레이해보고 확정한다.
@@ -119,7 +119,7 @@ ddooby-baby-tycoon/
 ├── src/
 │   ├── game/            ← 순수 로직 (balance, engine, loop) + 테스트
 │   ├── store/           ← Zustand 스토어 + 저장
-│   ├── components/      ← Hud, Crib, ActionBar, Shop
+│   ├── components/      ← Hud, Crib, ActionBar, Shop, DaySummary
 │   └── styles/          ← 디자인 토큰 + 스타일
 ├── docs/                ← 기획서, WBS, 개발 환경, 밸런스, Git 워크플로, ADR
 ├── scripts/             ← WBS 기반 GitHub 이슈 일괄 생성

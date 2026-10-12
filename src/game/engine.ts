@@ -6,7 +6,23 @@ import { BALANCE, NEEDS, UPGRADES, UPGRADE_IDS, type Need, type UpgradeId } from
 
 export type Rng = () => number;
 
+export type Phase = "playing" | "summary";
+
+export interface DayStats {
+  resolved: number;
+  meltdowns: number;
+  earned: number;
+}
+
 export interface GameState {
+  /** 1부터 시작하는 날짜 */
+  day: number;
+  /** 오늘 지나간 시간(초). 0 ~ BALANCE.dayLength */
+  dayTime: number;
+  /** playing: 하루 진행 중 / summary: 하루가 끝나 정산 중 (시간이 멈춘다) */
+  phase: Phase;
+  /** 오늘의 기록. 다음 날이 되면 초기화 */
+  today: DayStats;
   coins: number;
   need: Need | null;
   /** 0 ~ 100 */
@@ -17,9 +33,15 @@ export interface GameState {
 
 export type ResolveResult = { kind: "ok"; reward: number } | { kind: "wrong" } | { kind: "idle" };
 
+const emptyDay = (): DayStats => ({ resolved: 0, meltdowns: 0, earned: 0 });
+
 export function createInitialState(): GameState {
   const levels = Object.fromEntries(UPGRADE_IDS.map((id) => [id, 0])) as Record<UpgradeId, number>;
   return {
+    day: 1,
+    dayTime: 0,
+    phase: "playing",
+    today: emptyDay(),
     coins: 0,
     need: null,
     cry: 0,
@@ -50,11 +72,21 @@ export function upgradeCost(id: UpgradeId, level: number): number {
   return Math.round(def.baseCost * Math.pow(def.costGrowth, level));
 }
 
-/** dt(초) 만큼 시간을 진행시킨다. 변화가 없으면 같은 객체를 돌려준다. */
+/** dt(초) 만큼 시간을 진행시킨다. 정산 중이거나 dt 가 0 이면 같은 객체를 돌려준다. */
 export function tick(state: GameState, rawDt: number, rng: Rng = Math.random): GameState {
   const dt = Math.min(Math.max(rawDt, 0), BALANCE.maxDt);
-  if (dt === 0) return state;
+  if (dt === 0 || state.phase !== "playing") return state;
 
+  const dayTime = state.dayTime + dt;
+  if (dayTime >= BALANCE.dayLength) {
+    // 하루 종료: 남은 요구는 페널티 없이 사라진다
+    return { ...state, dayTime: BALANCE.dayLength, phase: "summary", need: null, cry: 0 };
+  }
+  return tickNeed({ ...state, dayTime }, dt, rng);
+}
+
+/** 요구 발생과 울음 게이지만 진행시킨다. */
+function tickNeed(state: GameState, dt: number, rng: Rng): GameState {
   if (state.need === null) {
     // 포아송 과정: dt 동안 최소 1회 발생할 확률 = 1 - e^(-λ·dt)
     const p = 1 - Math.exp(-BALANCE.needRatePerSec * dt);
@@ -73,6 +105,7 @@ export function tick(state: GameState, rawDt: number, rng: Rng = Math.random): G
       cry: 0,
       coins: Math.max(0, state.coins - BALANCE.meltdownPenalty),
       stats: { ...state.stats, meltdowns: state.stats.meltdowns + 1 },
+      today: { ...state.today, meltdowns: state.today.meltdowns + 1 },
     };
   }
   return { ...state, cry };
@@ -82,7 +115,7 @@ export function resolve(
   state: GameState,
   action: Need,
 ): { state: GameState; result: ResolveResult } {
-  if (state.need === null) return { state, result: { kind: "idle" } };
+  if (state.phase !== "playing" || state.need === null) return { state, result: { kind: "idle" } };
 
   if (action !== state.need) {
     const cry = Math.min(99.9, state.cry + BALANCE.wrongActionCry);
@@ -103,9 +136,20 @@ export function resolve(
         resolved: state.stats.resolved + 1,
         totalEarned: state.stats.totalEarned + reward,
       },
+      today: {
+        ...state.today,
+        resolved: state.today.resolved + 1,
+        earned: state.today.earned + reward,
+      },
     },
     result: { kind: "ok", reward },
   };
+}
+
+/** 정산을 마치고 다음 날을 시작한다. 하루가 끝난 상태가 아니면 같은 객체를 돌려준다. */
+export function startNextDay(state: GameState): GameState {
+  if (state.phase !== "summary") return state;
+  return { ...state, day: state.day + 1, dayTime: 0, phase: "playing", today: emptyDay() };
 }
 
 export function canBuy(state: Pick<GameState, "coins" | "levels">, id: UpgradeId): boolean {
