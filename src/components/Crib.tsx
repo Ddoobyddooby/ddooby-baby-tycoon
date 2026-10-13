@@ -1,33 +1,57 @@
-import { BALANCE, NEED_META } from "../game/balance";
+import type { CSSProperties } from "react";
+import { BALANCE, NEED_META, type Need } from "../game/balance";
+import type { Phase } from "../game/engine";
+import type { FxKind } from "../game/fx";
 import { useGame } from "../store/gameStore";
 
 const RADIUS = 92;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function faceFor(cry: number, hasNeed: boolean) {
-  if (!hasNeed) return "😊";
-  if (cry < 40) return "🥺";
-  if (cry < 75) return "😢";
-  return "😭";
+/** 계속 반복되는 기본 움직임. 이벤트 반응(fx)과는 다른 요소에 걸어서 서로 덮어쓰지 않게 한다 */
+type Mood = "asleep" | "calm" | "fidget" | "sway" | "wail";
+
+function moodFor(phase: Phase, need: Need | null, cry: number): Mood {
+  if (phase === "summary") return "asleep";
+  if (need === null) return "calm";
+  if (cry < 40) return "fidget";
+  if (cry < 75) return "sway";
+  return "wail";
 }
 
+/** 이벤트마다 아기 주위로 튀는 이모지 */
+const PARTICLES: Record<FxKind, readonly string[]> = {
+  need: [],
+  happy: ["💕", "✨", "💕", "✨", "💕", "✨"],
+  no: ["❓"],
+  meltdown: ["💦", "💦", "💦", "💦", "💦", "💦", "💦", "💦"],
+};
+
+const TEARS: Record<Mood, number> = { asleep: 0, calm: 0, fidget: 0, sway: 2, wail: 4 };
+
 export function Crib() {
+  const phase = useGame((s) => s.phase);
   const need = useGame((s) => s.need);
   const cry = useGame((s) => s.cry);
   const lastResult = useGame((s) => s.lastResult);
   const resultSeq = useGame((s) => s.resultSeq);
   const combo = useGame((s) => s.combo);
+  const fx = useGame((s) => s.fx);
 
-  const danger = need !== null && cry >= 75;
+  const mood = moodFor(phase, need, cry);
+  const danger = mood === "wail";
   const dash = CIRCUMFERENCE * (1 - cry / 100);
+  const particles = fx ? PARTICLES[fx.kind] : [];
+  const comboMaxed = combo >= BALANCE.comboMax;
 
   return (
     <section className="crib" aria-live="polite">
-      <div className={`crib__bubble ${need ? "is-visible" : ""}`}>
+      <div key={need ?? "none"} className={`crib__bubble ${need ? "is-visible" : ""}`}>
         {need ? (
           <>
             <span aria-hidden>{NEED_META[need].icon}</span> {NEED_META[need].label}
           </>
+        ) : phase === "summary" ? (
+          "쿨쿨…"
         ) : (
           "새근새근…"
         )}
@@ -45,16 +69,58 @@ export function Crib() {
             strokeDashoffset={dash}
           />
         </svg>
-        <span className="crib__face" role="img" aria-label="아기">
-          {faceFor(cry, need !== null)}
-        </span>
+
+        <div className={`crib__mood mood-${mood}`}>
+          {/* key 가 바뀌면 같은 반응도 처음부터 다시 재생된다 */}
+          <span
+            key={fx?.seq ?? 0}
+            className={`crib__face ${fx ? `fx-${fx.kind}` : ""}`}
+            role="img"
+            aria-label="아기"
+          >
+            👶
+          </span>
+        </div>
+
+        {TEARS[mood] > 0 && (
+          <div className="crib__tears" aria-hidden>
+            {Array.from({ length: TEARS[mood] }, (_, i) => (
+              <span key={i} style={{ "--i": i, "--side": i % 2 } as CSSProperties}>
+                💧
+              </span>
+            ))}
+          </div>
+        )}
+
+        {(mood === "calm" || mood === "asleep") && (
+          <span className="crib__zzz" aria-hidden>
+            💤
+          </span>
+        )}
+
+        {fx && particles.length > 0 && (
+          <div key={fx.seq} className={`crib__fx fx-${fx.kind}`} aria-hidden>
+            {particles.map((emoji, i) => (
+              <span
+                key={i}
+                style={{ "--angle": `${(360 / particles.length) * i}deg` } as CSSProperties}
+              >
+                {emoji}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      <p className={`crib__combo ${combo >= 2 ? "is-visible" : ""}`}>
+      <p
+        key={combo}
+        className={`crib__combo ${combo >= 2 ? "is-visible" : ""} ${comboMaxed ? "is-max" : ""}`}
+        style={{ "--combo": Math.min(combo, BALANCE.comboMax) } as CSSProperties}
+      >
         {combo >= 2 && (
           <>
             <span aria-hidden>🔥</span> {combo}콤보
-            {combo >= BALANCE.comboMax && " (MAX)"}
+            {comboMaxed && " (MAX)"}
           </>
         )}
       </p>
