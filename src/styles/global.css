@@ -268,7 +268,10 @@ button:focus-visible {
 
 /* ── 콤보 ─────────────────────────────────── */
 .crib__combo {
-  height: 1.4em;
+  /* 높이는 rem 으로 고정: 콤보가 커질수록 글자가 커져도 아래 버튼이 밀리지 않게 (최대 1.4rem 수용) */
+  height: 2rem;
+  line-height: 2rem;
+  white-space: nowrap;
   margin: 0;
   font-family: var(--font-display);
   font-size: calc(1rem + var(--combo, 0) * 0.08rem);
