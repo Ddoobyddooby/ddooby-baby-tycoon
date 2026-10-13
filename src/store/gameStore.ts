@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Need, UpgradeId } from "../game/balance";
+import { fxFromResult, fxFromTick, type Fx, type FxKind } from "../game/fx";
 import {
   buy,
   createInitialState,
@@ -15,12 +16,17 @@ interface GameStore extends GameState {
   lastResult: ResolveResult | null;
   /** 결과 피드백 애니메이션을 매번 다시 재생하기 위한 카운터 */
   resultSeq: number;
+  /** 아기 반응 애니메이션 신호. 저장하지 않는다 */
+  fx: Fx | null;
   tick: (dt: number) => void;
   act: (action: Need) => void;
   buyUpgrade: (id: UpgradeId) => void;
   nextDay: () => void;
   reset: () => void;
 }
+
+const nextFx = (s: GameStore, kind: FxKind | null): Fx | null =>
+  kind ? { kind, seq: (s.fx?.seq ?? 0) + 1 } : s.fx;
 
 const pickState = (s: GameStore): GameState => ({
   day: s.day,
@@ -41,16 +47,22 @@ export const useGame = create<GameStore>()(
       ...createInitialState(),
       lastResult: null,
       resultSeq: 0,
+      fx: null,
 
       tick: (dt) => {
         const prev = pickState(get());
         const next = tick(prev, dt);
-        if (next !== prev) set(next);
+        if (next !== prev) set({ ...next, fx: nextFx(get(), fxFromTick(prev, next)) });
       },
 
       act: (action) => {
         const { state, result } = resolve(pickState(get()), action);
-        set({ ...state, lastResult: result, resultSeq: get().resultSeq + 1 });
+        set({
+          ...state,
+          lastResult: result,
+          resultSeq: get().resultSeq + 1,
+          fx: nextFx(get(), fxFromResult(result)),
+        });
       },
 
       buyUpgrade: (id) => {
@@ -60,7 +72,7 @@ export const useGame = create<GameStore>()(
 
       nextDay: () => set(startNextDay(pickState(get()))),
 
-      reset: () => set({ ...createInitialState(), lastResult: null, resultSeq: 0 }),
+      reset: () => set({ ...createInitialState(), lastResult: null, resultSeq: 0, fx: null }),
     }),
     {
       name: "ddooby-baby-tycoon-save",

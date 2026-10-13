@@ -152,18 +152,129 @@ button:focus-visible {
 }
 
 .crib__face {
+  display: inline-block;
   font-size: clamp(4.5rem, 22vw, 6.5rem);
   line-height: 1;
 }
 
-.crib__baby.is-danger .crib__face {
-  animation: wail 0.35s ease-in-out infinite alternate;
+/* ── 아기: 계속 반복되는 기본 움직임 (mood) ── */
+.crib__mood {
+  display: grid;
+  place-items: center;
 }
 
+.mood-calm {
+  animation: baby-breathe 2.8s ease-in-out infinite alternate;
+}
+
+.mood-fidget {
+  animation: baby-fidget 0.7s ease-in-out infinite alternate;
+}
+
+.mood-sway {
+  animation: baby-sway 0.45s ease-in-out infinite alternate;
+}
+
+.mood-wail {
+  animation: baby-wail 0.22s ease-in-out infinite alternate;
+}
+
+.mood-asleep {
+  transform: rotate(-14deg) translateY(8px);
+  opacity: 0.85;
+}
+
+.crib__baby.is-danger .crib__ring-fill {
+  animation: baby-ring-pulse 0.4s ease-in-out infinite alternate;
+}
+
+/* ── 아기: 이벤트마다 한 번 재생되는 반응 (fx) ── */
+.crib__face.fx-need {
+  animation: baby-hop 0.4s ease-out;
+}
+
+.crib__face.fx-happy {
+  animation: baby-squish 0.55s ease-out;
+}
+
+.crib__face.fx-no {
+  animation: baby-headshake 0.5s ease-in-out;
+}
+
+.crib__face.fx-meltdown {
+  animation: baby-jolt 0.6s ease-out;
+}
+
+/* 아기 주위로 퍼지는 이모지 */
+.crib__fx {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.crib__fx > span {
+  grid-area: 1 / 1;
+  font-size: 1.6rem;
+  opacity: 0;
+  --dist: 95px;
+  animation: baby-burst 0.8s ease-out forwards;
+}
+
+.crib__fx.fx-meltdown > span {
+  --dist: 120px;
+}
+
+.crib__fx.fx-no > span {
+  --angle: 35deg;
+  --dist: 80px;
+  font-size: 2rem;
+}
+
+/* 눈물 */
+.crib__tears {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crib__tears > span {
+  position: absolute;
+  top: 48%;
+  /* --side: 0 = 왼쪽 볼, 1 = 오른쪽 볼 */
+  left: calc(36% + var(--side) * 26%);
+  font-size: 1rem;
+  opacity: 0;
+  animation: baby-tear 0.9s ease-in infinite;
+  animation-delay: calc(var(--i) * 0.22s);
+}
+
+/* 쿨쿨 */
+.crib__zzz {
+  position: absolute;
+  top: 14%;
+  right: 16%;
+  font-size: 1.6rem;
+  pointer-events: none;
+  animation: baby-zzz 2.6s ease-out infinite;
+}
+
+/* 말풍선이 톡 튀어나옴 */
+.crib__bubble.is-visible {
+  transform-origin: bottom left;
+  animation: baby-bubble 0.28s ease-out;
+}
+
+/* ── 콤보 ─────────────────────────────────── */
 .crib__combo {
-  height: 1.4em;
+  /* 높이는 rem 으로 고정: 콤보가 커질수록 글자가 커져도 아래 버튼이 밀리지 않게 (최대 1.4rem 수용) */
+  height: 2rem;
+  line-height: 2rem;
+  white-space: nowrap;
   margin: 0;
   font-family: var(--font-display);
+  font-size: calc(1rem + var(--combo, 0) * 0.08rem);
   color: var(--blanket);
   opacity: 0;
   transition: opacity 0.15s;
@@ -171,6 +282,14 @@ button:focus-visible {
 
 .crib__combo.is-visible {
   opacity: 1;
+  animation: baby-combo-bump 0.3s ease-out;
+}
+
+.crib__combo.is-max {
+  color: var(--nightlight);
+  animation:
+    baby-combo-bump 0.3s ease-out,
+    baby-glow 0.9s ease-in-out infinite alternate;
 }
 
 .crib__feedback {
@@ -182,15 +301,6 @@ button:focus-visible {
   animation: pop 0.6s ease-out forwards;
 }
 
-@keyframes wail {
-  from {
-    transform: rotate(-6deg);
-  }
-  to {
-    transform: rotate(6deg);
-  }
-}
-
 @keyframes pop {
   0% {
     opacity: 1;
@@ -199,6 +309,206 @@ button:focus-visible {
   100% {
     opacity: 0;
     transform: translateY(-18px);
+  }
+}
+
+/* ── 아기 애니메이션 keyframes (이름 충돌 방지: baby- 접두사) ── */
+@keyframes baby-breathe {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes baby-fidget {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg) translateY(-2px);
+  }
+}
+
+@keyframes baby-sway {
+  from {
+    transform: rotate(-6deg) translateX(-3px);
+  }
+  to {
+    transform: rotate(6deg) translateX(3px);
+  }
+}
+
+@keyframes baby-wail {
+  from {
+    transform: rotate(-9deg) translateY(0);
+  }
+  to {
+    transform: rotate(9deg) translateY(-4px);
+  }
+}
+
+@keyframes baby-ring-pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes baby-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes baby-squish {
+  0% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.18, 0.84);
+  }
+  50% {
+    transform: scale(0.9, 1.14) translateY(-10px);
+  }
+  75% {
+    transform: scale(1.05, 0.96);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes baby-headshake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-14deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+  80% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes baby-jolt {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.25) rotate(-8deg);
+  }
+  40% {
+    transform: scale(1.15) rotate(8deg);
+  }
+  60% {
+    transform: scale(1.2) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes baby-burst {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--angle)) translateY(-30px) rotate(calc(-1 * var(--angle))) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(calc(-1 * var(--dist)))
+      rotate(calc(-1 * var(--angle))) scale(1.1);
+  }
+}
+
+@keyframes baby-tear {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70px) scale(1);
+  }
+}
+
+@keyframes baby-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -36px) scale(1.1);
+  }
+}
+
+@keyframes baby-bubble {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes baby-combo-bump {
+  0% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes baby-glow {
+  from {
+    text-shadow: 0 0 0 transparent;
+  }
+  to {
+    text-shadow: 0 0 12px var(--nightlight);
+  }
+}
+
+/* 움직임 줄이기 설정 사용자: 반복/반응 애니메이션을 끄고 장식 이모지도 숨긴다 */
+@media (prefers-reduced-motion: reduce) {
+  .crib__mood,
+  .crib__face,
+  .crib__combo,
+  .crib__bubble,
+  .crib__baby .crib__ring-fill {
+    animation: none !important;
+  }
+
+  .crib__fx,
+  .crib__tears,
+  .crib__zzz {
+    display: none;
   }
 }
 

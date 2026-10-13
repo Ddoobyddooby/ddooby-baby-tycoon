@@ -53,4 +53,6 @@
 - [x] 상점을 열면 게임 일시정지 (`App.tsx`)
 - [x] 하루(60초) 단위 + 정산 화면 (`engine.startNextDay`, `DaySummary`)
 - [x] 콤보 보너스 (`engine.comboBonus`)
+- [x] 아기 👶 + 이벤트별 애니메이션 A안 (`game/fx.ts`, `Crib.tsx`)
 - [ ] 다음 후보: 날짜별 난이도 곡선
+- [ ] 나중에: 아기 B안 (직접 그린 SVG, 표정 연기)
