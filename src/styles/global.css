@@ -62,7 +62,8 @@ button:focus-visible {
 /* ── 레이아웃 ─────────────────────────────── */
 .game {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 12px;
   height: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -72,8 +73,37 @@ button:focus-visible {
 /* ── HUD ──────────────────────────────────── */
 .hud {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
+}
+
+/* 체력(생명 게이지): HUD 아래 한 줄 전체 */
+.hud__hp {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud__hp-track {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 248, 238, 0.12);
+}
+
+.hud__hp-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blanket);
+  transition: width 0.25s ease-out;
+}
+
+.hud__hp.is-low .hud__hp-fill {
+  background: var(--cry);
 }
 
 .hud__coins {
@@ -512,6 +542,109 @@ button:focus-visible {
   }
 }
 
+/* ── 준비 슬롯 (붕어빵 틀) ─────────────────── */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slots__slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 84px;
+  padding: 8px 6px 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 248, 238, 0.18);
+  border-radius: var(--radius-btn);
+  background: rgba(255, 248, 238, 0.06);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.slots__slot.is-empty {
+  border-style: dashed;
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+
+.slots__slot.is-ready {
+  border-color: var(--nightlight);
+  background: rgba(255, 210, 122, 0.16);
+  animation: slot-ready 0.7s ease-in-out infinite alternate;
+}
+
+.slots__slot.is-golden {
+  box-shadow: 0 0 14px var(--nightlight);
+}
+
+.slots__slot.is-spoiled {
+  border-color: var(--cry);
+  background: rgba(232, 80, 91, 0.18);
+}
+
+.slots__icon {
+  position: relative;
+  font-size: 1.6rem;
+}
+
+.slots__sparkle {
+  position: absolute;
+  top: -6px;
+  right: -14px;
+  font-size: 0.9rem;
+}
+
+.slots__label {
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+/* 진행 막대: 가운데 눈금 = 딱 좋아지는 시점 */
+.slots__bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    var(--nightlight) calc(var(--progress, 0) * 100%),
+    rgba(255, 248, 238, 0.1) 0
+  );
+}
+
+.slots__bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--milk);
+}
+
+.slots__slot.is-spoiled .slots__bar {
+  background: var(--cry);
+}
+
+@keyframes slot-ready {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.04);
+  }
+}
+
 /* ── 행동 버튼 (엄지 영역) ─────────────────── */
 .actions {
   display: grid;
@@ -535,7 +668,12 @@ button:focus-visible {
   transition: transform 0.06s;
 }
 
-.actions__btn:active {
+.actions__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actions__btn:active:not(:disabled) {
   transform: translateY(3px);
   box-shadow: 0 1px 0 var(--wood);
 }
@@ -682,6 +820,12 @@ button:focus-visible {
   margin: 0 0 12px;
   font-family: var(--font-display);
   font-weight: 400;
+  text-align: center;
+}
+
+.summary__note {
+  margin: 0 0 8px;
+  color: var(--cry);
   text-align: center;
 }
 

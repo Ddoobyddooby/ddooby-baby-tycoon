@@ -13,7 +13,21 @@ export interface DayStats {
   meltdowns: number;
   earned: number;
   bestCombo: number;
+  /** 체력이 0 이 되어 하루가 일찍 끝났는지 */
+  exhausted: boolean;
 }
+
+/** 준비 슬롯 하나 (붕어빵 틀 하나에 해당) */
+export interface Slot {
+  need: Need;
+  /** 준비를 시작한 뒤 지난 시간(초) */
+  t: number;
+  /** 반짝 아이템이면 보상 배율이 붙는다 */
+  golden: boolean;
+}
+
+/** warming: 아직 덜 됨 / ready: 딱 좋음 / spoiled: 망침 */
+export type PrepStage = "warming" | "ready" | "spoiled";
 
 export interface GameState {
   /** 1부터 시작하는 날짜 */
@@ -30,14 +44,30 @@ export interface GameState {
   need: Need | null;
   /** 0 ~ 100 */
   cry: number;
+  /** 길이 BALANCE.slotCount. 빈 슬롯은 null */
+  slots: (Slot | null)[];
+  /** 부모 체력. 0 ~ BALANCE.maxHp */
+  hp: number;
   levels: Record<UpgradeId, number>;
   stats: { resolved: number; meltdowns: number; totalEarned: number };
 }
 
 export type ResolveResult =
-  { kind: "ok"; reward: number; combo: number } | { kind: "wrong" } | { kind: "idle" };
+  | { kind: "ok"; reward: number; combo: number; golden: boolean }
+  | { kind: "wrong" }
+  /** 덜 되거나 망친 걸 꺼냄 */
+  | { kind: "bad"; need: Need; stage: "warming" | "spoiled" }
+  | { kind: "idle" };
 
-const emptyDay = (): DayStats => ({ resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 });
+const emptyDay = (): DayStats => ({
+  resolved: 0,
+  meltdowns: 0,
+  earned: 0,
+  bestCombo: 0,
+  exhausted: false,
+});
+
+const emptySlots = (): (Slot | null)[] => Array.from({ length: BALANCE.slotCount }, () => null);
 
 export function createInitialState(): GameState {
   const levels = Object.fromEntries(UPGRADE_IDS.map((id) => [id, 0])) as Record<UpgradeId, number>;
@@ -50,6 +80,8 @@ export function createInitialState(): GameState {
     coins: 0,
     need: null,
     cry: 0,
+    slots: emptySlots(),
+    hp: BALANCE.maxHp,
     levels,
     stats: { resolved: 0, meltdowns: 0, totalEarned: 0 },
   };
@@ -82,17 +114,39 @@ export function upgradeCost(id: UpgradeId, level: number): number {
   return Math.round(def.baseCost * Math.pow(def.costGrowth, level));
 }
 
+export function prepStage(slot: Slot): PrepStage {
+  if (slot.t < BALANCE.prepReadyAt) return "warming";
+  if (slot.t < BALANCE.prepSpoilAt) return "ready";
+  return "spoiled";
+}
+
+/** 하루를 끝내고 정산 단계로 넘긴다. 남은 요구와 슬롯은 페널티 없이 사라진다 */
+function endDay(state: GameState, exhausted: boolean): GameState {
+  return {
+    ...state,
+    dayTime: exhausted ? state.dayTime : BALANCE.dayLength,
+    phase: "summary",
+    need: null,
+    cry: 0,
+    combo: 0,
+    slots: emptySlots(),
+    today: { ...state.today, exhausted },
+  };
+}
+
+const loseHp = (hp: number, amount: number) => Math.max(0, hp - amount);
+
 /** dt(초) 만큼 시간을 진행시킨다. 정산 중이거나 dt 가 0 이면 같은 객체를 돌려준다. */
 export function tick(state: GameState, rawDt: number, rng: Rng = Math.random): GameState {
   const dt = Math.min(Math.max(rawDt, 0), BALANCE.maxDt);
   if (dt === 0 || state.phase !== "playing") return state;
 
   const dayTime = state.dayTime + dt;
-  if (dayTime >= BALANCE.dayLength) {
-    // 하루 종료: 남은 요구는 페널티 없이 사라진다
-    return { ...state, dayTime: BALANCE.dayLength, phase: "summary", need: null, cry: 0, combo: 0 };
-  }
-  return tickNeed({ ...state, dayTime }, dt, rng);
+  if (dayTime >= BALANCE.dayLength) return endDay(state, false);
+
+  const slots = state.slots.map((slot) => (slot ? { ...slot, t: slot.t + dt } : null));
+  const next = tickNeed({ ...state, dayTime, slots }, dt, rng);
+  return next.hp <= 0 ? endDay(next, true) : next;
 }
 
 /** 요구 발생과 울음 게이지만 진행시킨다. */
@@ -115,6 +169,7 @@ function tickNeed(state: GameState, dt: number, rng: Rng): GameState {
       cry: 0,
       combo: 0,
       coins: Math.max(0, state.coins - BALANCE.meltdownPenalty),
+      hp: loseHp(state.hp, BALANCE.meltdownHp),
       stats: { ...state.stats, meltdowns: state.stats.meltdowns + 1 },
       today: { ...state.today, meltdowns: state.today.meltdowns + 1 },
     };
@@ -122,20 +177,47 @@ function tickNeed(state: GameState, dt: number, rng: Rng): GameState {
   return { ...state, cry };
 }
 
-export function resolve(
-  state: GameState,
-  action: Need,
-): { state: GameState; result: ResolveResult } {
-  if (state.phase !== "playing" || state.need === null) return { state, result: { kind: "idle" } };
+/** 빈 슬롯 중 첫 칸에서 준비를 시작한다. 빈 칸이 없거나 정산 중이면 같은 객체를 돌려준다. */
+export function prepare(state: GameState, need: Need, rng: Rng = Math.random): GameState {
+  if (state.phase !== "playing") return state;
+  const index = state.slots.indexOf(null);
+  if (index === -1) return state;
+  const slots = [...state.slots];
+  slots[index] = { need, t: 0, golden: rng() < BALANCE.goldenChance };
+  return { ...state, slots };
+}
 
-  if (action !== state.need) {
+/** 슬롯을 꺼내 아기에게 준다. 덜 되거나 망친 건 요구와 상관없이 체력을 잃고 버려진다. */
+export function serve(
+  state: GameState,
+  index: number,
+): { state: GameState; result: ResolveResult } {
+  const slot = state.slots[index];
+  if (state.phase !== "playing" || !slot) return { state, result: { kind: "idle" } };
+
+  const stage = prepStage(slot);
+  if (stage !== "ready") {
+    const slots = state.slots.map((s, i) => (i === index ? null : s));
+    const hp = loseHp(state.hp, BALANCE.badServeHp);
+    const next = { ...state, slots, hp, combo: 0 };
+    return {
+      state: hp <= 0 ? endDay(next, true) : next,
+      result: { kind: "bad", need: slot.need, stage },
+    };
+  }
+
+  // 딱 좋은 상태라도 줄 아기가 없으면 그대로 둔다 (계속 두면 망친다)
+  if (state.need === null) return { state, result: { kind: "idle" } };
+
+  if (slot.need !== state.need) {
     const cry = Math.min(99.9, state.cry + BALANCE.wrongActionCry);
     return { state: { ...state, cry, combo: 0 }, result: { kind: "wrong" } };
   }
 
   const speedRatio = Math.max(BALANCE.minRewardRatio, 1 - state.cry / 100);
   const multiplier = rewardMultiplier(state) + comboBonus(state.combo);
-  const reward = Math.max(1, Math.round(BALANCE.baseReward * speedRatio * multiplier));
+  const golden = slot.golden ? BALANCE.goldenMultiplier : 1;
+  const reward = Math.max(1, Math.round(BALANCE.baseReward * speedRatio * multiplier * golden));
   const combo = state.combo + 1;
 
   return {
@@ -145,6 +227,7 @@ export function resolve(
       cry: 0,
       combo,
       coins: state.coins + reward,
+      slots: state.slots.map((s, i) => (i === index ? null : s)),
       stats: {
         ...state.stats,
         resolved: state.stats.resolved + 1,
@@ -157,14 +240,22 @@ export function resolve(
         bestCombo: Math.max(state.today.bestCombo, combo),
       },
     },
-    result: { kind: "ok", reward, combo },
+    result: { kind: "ok", reward, combo, golden: slot.golden },
   };
 }
 
 /** 정산을 마치고 다음 날을 시작한다. 하루가 끝난 상태가 아니면 같은 객체를 돌려준다. */
 export function startNextDay(state: GameState): GameState {
   if (state.phase !== "summary") return state;
-  return { ...state, day: state.day + 1, dayTime: 0, phase: "playing", today: emptyDay() };
+  return {
+    ...state,
+    day: state.day + 1,
+    dayTime: 0,
+    phase: "playing",
+    today: emptyDay(),
+    slots: emptySlots(),
+    hp: BALANCE.maxHp,
+  };
 }
 
 export function canBuy(state: Pick<GameState, "coins" | "levels">, id: UpgradeId): boolean {

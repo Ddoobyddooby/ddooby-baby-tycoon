@@ -6,11 +6,20 @@
 export const NEEDS = ["hungry", "diaper", "sleepy", "bored"] as const;
 export type Need = (typeof NEEDS)[number];
 
-export const NEED_META: Record<Need, { label: string; icon: string; action: string }> = {
-  hungry: { label: "배고파요", icon: "🍼", action: "분유 주기" },
-  diaper: { label: "기저귀", icon: "🧷", action: "기저귀 갈기" },
-  sleepy: { label: "졸려요", icon: "😴", action: "재우기" },
-  bored: { label: "심심해요", icon: "🧸", action: "놀아주기" },
+export interface NeedMeta {
+  label: string;
+  icon: string;
+  /** 준비 슬롯에서 시작하는 준비 동작 (행동 버튼 이름) */
+  action: string;
+  /** 준비 시간을 넘겨 망쳤을 때의 문구 (붕어빵이 타는 것에 해당) */
+  spoiled: string;
+}
+
+export const NEED_META: Record<Need, NeedMeta> = {
+  hungry: { label: "배고파요", icon: "🍼", action: "분유 데우기", spoiled: "너무 뜨거워요" },
+  diaper: { label: "기저귀", icon: "🧷", action: "물티슈 데우기", spoiled: "물티슈가 말랐어요" },
+  sleepy: { label: "졸려요", icon: "😴", action: "자장가 틀기", spoiled: "노래가 끝났어요" },
+  bored: { label: "심심해요", icon: "🧸", action: "비눗방울 불기", spoiled: "비눗방울이 터졌어요" },
 };
 
 export const BALANCE = {
@@ -32,6 +41,22 @@ export const BALANCE = {
   comboBonusPerStep: 0.1,
   /** 보너스가 붙는 최대 콤보 수 (이 이상은 보너스가 늘지 않는다) */
   comboMax: 5,
+  /** 준비 슬롯 수 (붕어빵 틀에 해당) */
+  slotCount: 3,
+  /** 준비 시작 후 '딱 좋아요'가 되기까지 걸리는 시간(초). 이전에 꺼내면 덜 된 것 */
+  prepReadyAt: 2.5,
+  /** 준비 시작 후 망쳐 버리는 시간(초). 이후에 꺼내면 망친 것 */
+  prepSpoilAt: 6,
+  /** 준비를 시작할 때 반짝 아이템(황금붕어빵)이 될 확률 */
+  goldenChance: 0.08,
+  /** 반짝 아이템의 보상 배율 */
+  goldenMultiplier: 2,
+  /** 부모 체력(생명 게이지). 매일 가득 찬 채로 시작하고 0 이 되면 그날은 끝 */
+  maxHp: 100,
+  /** 덜 되거나 망친 걸 꺼냈을 때 잃는 체력 */
+  badServeHp: 10,
+  /** 울음 폭발 때 잃는 체력 */
+  meltdownHp: 20,
   /** 프레임이 길게 끊겼을 때(탭 전환 등) 한 번에 처리할 최대 dt */
   maxDt: 0.25,
 } as const;

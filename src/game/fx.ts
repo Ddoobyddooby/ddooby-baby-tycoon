@@ -21,6 +21,7 @@ export function fxFromTick(prev: GameState, next: GameState): FxKind | null {
 
 export function fxFromResult(result: ResolveResult): FxKind | null {
   if (result.kind === "ok") return "happy";
-  if (result.kind === "wrong") return "no";
+  // 오답이든 덜 되거나 망친 걸 받았든 아기는 고개를 젓는다
+  if (result.kind === "wrong" || result.kind === "bad") return "no";
   return null;
 }

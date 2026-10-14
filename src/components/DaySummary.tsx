@@ -1,9 +1,11 @@
+import { BALANCE } from "../game/balance";
 import { useGame } from "../store/gameStore";
 
 export function DaySummary({ onOpenShop }: { onOpenShop: () => void }) {
   const day = useGame((s) => s.day);
   const today = useGame((s) => s.today);
   const coins = useGame((s) => s.coins);
+  const hp = useGame((s) => s.hp);
   const nextDay = useGame((s) => s.nextDay);
 
   return (
@@ -17,6 +19,9 @@ export function DaySummary({ onOpenShop }: { onOpenShop: () => void }) {
         <h2 id="summary-title" className="summary__title">
           {day}일차 정산
         </h2>
+        {today.exhausted && (
+          <p className="summary__note">기진맥진… 체력이 바닥나서 일찍 쓰러졌어요</p>
+        )}
 
         <dl className="summary">
           <div>
@@ -26,6 +31,10 @@ export function DaySummary({ onOpenShop }: { onOpenShop: () => void }) {
           <div>
             <dt>울음 폭발</dt>
             <dd>{today.meltdowns}</dd>
+          </div>
+          <div>
+            <dt>남은 체력</dt>
+            <dd>❤️ {Math.round(hp)}/{BALANCE.maxHp}</dd>
           </div>
           <div>
             <dt>최고 콤보</dt>

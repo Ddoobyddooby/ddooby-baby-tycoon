@@ -1,19 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { BALANCE } from "./balance";
+import { BALANCE, type Need } from "./balance";
 import {
   buy,
   comboBonus,
   createInitialState,
   crySpeedFor,
-  resolve,
+  prepStage,
+  prepare,
   rewardMultiplier,
+  serve,
   startNextDay,
   tick,
   upgradeCost,
   type GameState,
+  type Slot,
 } from "./engine";
 
-const emptyToday = { resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 };
+const emptyToday = { resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0, exhausted: false };
+
+const ready = (need: Need, golden = false): Slot => ({ need, t: BALANCE.prepReadyAt, golden });
+
+/** 첫 슬롯에 '딱 좋은' 상태의 need 를 놓고 꺼내 준다 */
+const give = (state: GameState, need: Need) =>
+  serve({ ...state, slots: [ready(need), null, null] }, 0);
 
 const withNeed = (overrides: Partial<GameState> = {}): GameState => ({
   ...createInitialState(),
@@ -63,38 +72,50 @@ describe("tick", () => {
 
 describe("resolve", () => {
   it("맞는 대응: 빨리 할수록 보상이 크다", () => {
-    const fast = resolve(withNeed({ cry: 0 }), "hungry");
-    const slow = resolve(withNeed({ cry: 60 }), "hungry");
-    expect(fast.result).toEqual({ kind: "ok", reward: BALANCE.baseReward, combo: 1 });
+    const fast = give(withNeed({ cry: 0 }), "hungry");
+    const slow = give(withNeed({ cry: 60 }), "hungry");
+    expect(fast.result).toEqual({
+      kind: "ok",
+      reward: BALANCE.baseReward,
+      combo: 1,
+      golden: false,
+    });
     expect(slow.result.kind === "ok" && slow.result.reward).toBeLessThan(BALANCE.baseReward);
     expect(fast.state.need).toBeNull();
     expect(fast.state.stats.resolved).toBe(1);
+    expect(fast.state.slots).toEqual([null, null, null]);
     expect(fast.state.today).toEqual({
+      ...emptyToday,
       resolved: 1,
-      meltdowns: 0,
       earned: BALANCE.baseReward,
       bestCombo: 1,
     });
   });
 
   it("최소 보상 비율이 보장된다", () => {
-    const { result } = resolve(withNeed({ cry: 99 }), "hungry");
+    const { result } = give(withNeed({ cry: 99 }), "hungry");
     expect(result).toEqual({
       kind: "ok",
       reward: Math.round(BALANCE.baseReward * BALANCE.minRewardRatio),
       combo: 1,
+      golden: false,
     });
   });
 
   it("틀린 대응은 울음을 올리지만 100 을 넘기진 않는다", () => {
-    const { state, result } = resolve(withNeed({ cry: 95 }), "diaper");
+    const { state, result } = give(withNeed({ cry: 95 }), "diaper");
     expect(result.kind).toBe("wrong");
     expect(state.cry).toBeLessThan(100);
   });
 
-  it("요구가 없을 때 누르면 아무 일도 없다", () => {
-    const state = createInitialState();
-    expect(resolve(state, "hungry")).toEqual({ state, result: { kind: "idle" } });
+  it("요구가 없을 때 딱 좋은 걸 꺼내면 아무 일도 없고 슬롯에 그대로 남는다", () => {
+    const state = { ...createInitialState(), slots: [ready("hungry"), null, null] };
+    expect(serve(state, 0)).toEqual({ state, result: { kind: "idle" } });
+  });
+
+  it("틀린 걸 주면 슬롯은 그대로 남는다", () => {
+    const { state } = give(withNeed(), "diaper");
+    expect(state.slots[0]).toEqual(ready("diaper"));
   });
 });
 
@@ -163,8 +184,14 @@ describe("day cycle", () => {
   });
 
   it("정산 단계에서 눌러도 아무 일도 없다", () => {
-    const summary = { ...nearEnd(), phase: "summary" as const };
-    expect(resolve(summary, "hungry")).toEqual({ state: summary, result: { kind: "idle" } });
+    const summary = {
+      ...nearEnd(),
+      phase: "summary" as const,
+      need: "hungry" as const,
+      slots: [ready("hungry"), null, null],
+    };
+    expect(serve(summary, 0)).toEqual({ state: summary, result: { kind: "idle" } });
+    expect(prepare(summary, "hungry")).toBe(summary);
   });
 
   it("다음 날을 시작하면 날짜 +1, 시계와 오늘 기록 초기화, 코인/레벨은 유지", () => {
@@ -181,7 +208,7 @@ describe("day cycle", () => {
     expect(next.day).toBe(4);
     expect(next.phase).toBe("playing");
     expect(next.dayTime).toBe(0);
-    expect(next.today).toEqual({ resolved: 0, meltdowns: 0, earned: 0, bestCombo: 0 });
+    expect(next.today).toEqual(emptyToday);
     expect(next.coins).toBe(77);
     expect(next.levels.rattle).toBe(2);
   });
@@ -202,15 +229,15 @@ describe("combo", () => {
   it("맞게 대응하면 콤보가 쌓이고 오늘의 최고 콤보가 갱신된다", () => {
     let state = withNeed();
     for (let i = 0; i < 3; i++) {
-      state = resolve({ ...state, need: "hungry" }, "hungry").state;
+      state = give({ ...state, need: "hungry" }, "hungry").state;
     }
     expect(state.combo).toBe(3);
     expect(state.today.bestCombo).toBe(3);
   });
 
   it("보상에 현재 콤보의 보너스가 붙는다 (첫 성공은 보너스 없음)", () => {
-    const first = resolve(withNeed({ combo: 0 }), "hungry").result;
-    const third = resolve(withNeed({ combo: 2 }), "hungry").result;
+    const first = give(withNeed({ combo: 0 }), "hungry").result;
+    const third = give(withNeed({ combo: 2 }), "hungry").result;
     expect(first.kind === "ok" && first.reward).toBe(BALANCE.baseReward);
     expect(third.kind === "ok" && third.reward).toBe(
       Math.round(BALANCE.baseReward * (1 + comboBonus(2))),
@@ -222,14 +249,14 @@ describe("combo", () => {
       combo: 2,
       levels: { ...createInitialState().levels, lullaby: 1 },
     });
-    const { result } = resolve(state, "hungry");
+    const { result } = give(state, "hungry");
     expect(result.kind === "ok" && result.reward).toBe(
       Math.round(BALANCE.baseReward * (1 + 0.2 + comboBonus(2))),
     );
   });
 
   it("틀린 대응은 콤보를 끊는다 (최고 기록은 유지)", () => {
-    const { state } = resolve(
+    const { state } = give(
       withNeed({ combo: 4, today: { ...emptyToday, bestCombo: 4 } }),
       "diaper",
     );
@@ -244,5 +271,110 @@ describe("combo", () => {
   it("하루가 끝나면 콤보가 끊긴다", () => {
     const state = { ...createInitialState(), combo: 3, dayTime: BALANCE.dayLength - 0.05 };
     expect(tick(state, 0.1).combo).toBe(0);
+  });
+});
+
+describe("prep slots", () => {
+  it("준비는 빈 슬롯 중 첫 칸에서 시작된다", () => {
+    const state = { ...createInitialState(), slots: [ready("diaper"), null, null] };
+    const next = prepare(state, "hungry", () => 0.999);
+    expect(next.slots).toEqual([ready("diaper"), { need: "hungry", t: 0, golden: false }, null]);
+  });
+
+  it("빈 슬롯이 없으면 준비할 수 없다", () => {
+    const state = {
+      ...createInitialState(),
+      slots: [ready("hungry"), ready("hungry"), ready("hungry")],
+    };
+    expect(prepare(state, "diaper")).toBe(state);
+  });
+
+  it("확률에 걸리면 반짝 아이템이 된다", () => {
+    expect(prepare(createInitialState(), "hungry", () => 0).slots[0]?.golden).toBe(true);
+  });
+
+  it("tick 마다 슬롯 시간이 흐르고 단계가 덜 됨 → 딱 좋음 → 망침 순으로 바뀐다", () => {
+    let state = prepare(createInitialState(), "hungry", () => 0.999);
+    const stages = new Set<string>();
+    for (let t = 0; t < BALANCE.prepSpoilAt + 1; t += 0.1) {
+      state = tick(state, 0.1, () => 0.999);
+      stages.add(prepStage(state.slots[0]!));
+    }
+    expect([...stages]).toEqual(["warming", "ready", "spoiled"]);
+  });
+
+  it("덜 된 걸 꺼내면 체력이 줄고 슬롯이 비며 콤보가 끊긴다 (요구는 그대로)", () => {
+    const state = withNeed({
+      combo: 3,
+      slots: [{ need: "hungry", t: 0, golden: false }, null, null],
+    });
+    const { state: next, result } = serve(state, 0);
+    expect(result).toEqual({ kind: "bad", need: "hungry", stage: "warming" });
+    expect(next.hp).toBe(BALANCE.maxHp - BALANCE.badServeHp);
+    expect(next.slots[0]).toBeNull();
+    expect(next.combo).toBe(0);
+    expect(next.need).toBe("hungry");
+  });
+
+  it("망친 건 요구가 없어도 꺼내면 체력이 준다", () => {
+    const state = {
+      ...createInitialState(),
+      slots: [{ need: "bored" as const, t: BALANCE.prepSpoilAt, golden: false }, null, null],
+    };
+    const { state: next, result } = serve(state, 0);
+    expect(result).toEqual({ kind: "bad", need: "bored", stage: "spoiled" });
+    expect(next.hp).toBe(BALANCE.maxHp - BALANCE.badServeHp);
+  });
+
+  it("빈 슬롯을 누르면 아무 일도 없다", () => {
+    const state = withNeed();
+    expect(serve(state, 1)).toEqual({ state, result: { kind: "idle" } });
+  });
+
+  it("반짝 아이템은 보상 배율이 붙는다", () => {
+    const { result } = serve(withNeed({ slots: [ready("hungry", true), null, null] }), 0);
+    expect(result).toEqual({
+      kind: "ok",
+      reward: BALANCE.baseReward * BALANCE.goldenMultiplier,
+      combo: 1,
+      golden: true,
+    });
+  });
+});
+
+describe("hp", () => {
+  it("울음 폭발은 체력을 깎는다", () => {
+    expect(tick(withNeed({ cry: 99.9 }), 0.1).hp).toBe(BALANCE.maxHp - BALANCE.meltdownHp);
+  });
+
+  it("폭발로 체력이 0 이 되면 그날은 바로 끝난다 (기진맥진)", () => {
+    const next = tick(withNeed({ cry: 99.9, hp: BALANCE.meltdownHp, dayTime: 10 }), 0.1);
+    expect(next.hp).toBe(0);
+    expect(next.phase).toBe("summary");
+    expect(next.today.exhausted).toBe(true);
+    expect(next.dayTime).toBeLessThan(BALANCE.dayLength);
+  });
+
+  it("나쁜 걸 꺼내 체력이 0 이 되어도 그날은 끝난다", () => {
+    const state = withNeed({
+      hp: BALANCE.badServeHp,
+      slots: [{ need: "hungry", t: 0, golden: false }, ready("diaper"), null],
+    });
+    const { state: next } = serve(state, 0);
+    expect(next.phase).toBe("summary");
+    expect(next.today.exhausted).toBe(true);
+    expect(next.slots).toEqual([null, null, null]);
+  });
+
+  it("다음 날이 되면 체력과 슬롯이 초기화된다", () => {
+    const summary = {
+      ...createInitialState(),
+      phase: "summary" as const,
+      hp: 0,
+      slots: [ready("hungry"), null, null],
+    };
+    const next = startNextDay(summary);
+    expect(next.hp).toBe(BALANCE.maxHp);
+    expect(next.slots).toEqual([null, null, null]);
   });
 });

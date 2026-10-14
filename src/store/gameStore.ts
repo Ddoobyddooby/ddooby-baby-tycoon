@@ -5,7 +5,8 @@ import { fxFromResult, fxFromTick, type Fx, type FxKind } from "../game/fx";
 import {
   buy,
   createInitialState,
-  resolve,
+  prepare,
+  serve,
   startNextDay,
   tick,
   type GameState,
@@ -19,7 +20,10 @@ interface GameStore extends GameState {
   /** 아기 반응 애니메이션 신호. 저장하지 않는다 */
   fx: Fx | null;
   tick: (dt: number) => void;
-  act: (action: Need) => void;
+  /** 빈 슬롯에서 준비를 시작한다 */
+  prepare: (need: Need) => void;
+  /** 슬롯을 꺼내 아기에게 준다 */
+  serve: (index: number) => void;
   buyUpgrade: (id: UpgradeId) => void;
   nextDay: () => void;
   reset: () => void;
@@ -37,6 +41,8 @@ const pickState = (s: GameStore): GameState => ({
   coins: s.coins,
   need: s.need,
   cry: s.cry,
+  slots: s.slots,
+  hp: s.hp,
   levels: s.levels,
   stats: s.stats,
 });
@@ -55,8 +61,14 @@ export const useGame = create<GameStore>()(
         if (next !== prev) set({ ...next, fx: nextFx(get(), fxFromTick(prev, next)) });
       },
 
-      act: (action) => {
-        const { state, result } = resolve(pickState(get()), action);
+      prepare: (need) => {
+        const prev = pickState(get());
+        const next = prepare(prev, need);
+        if (next !== prev) set(next);
+      },
+
+      serve: (index) => {
+        const { state, result } = serve(pickState(get()), index);
         set({
           ...state,
           lastResult: result,
@@ -77,7 +89,7 @@ export const useGame = create<GameStore>()(
     {
       name: "ddooby-baby-tycoon-save",
       version: 1,
-      // 진행 중인 요구/울음/하루 시계는 저장하지 않는다 (재접속하자마자 울음 폭발 방지, 하루는 처음부터)
+      // 진행 중인 요구/울음/슬롯/체력/하루 시계는 저장하지 않는다 (재접속하자마자 울음 폭발 방지, 하루는 처음부터)
       partialize: (s) => ({ day: s.day, coins: s.coins, levels: s.levels, stats: s.stats }),
     },
   ),

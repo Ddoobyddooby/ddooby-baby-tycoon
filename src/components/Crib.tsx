@@ -28,6 +28,12 @@ const PARTICLES: Record<FxKind, readonly string[]> = {
 
 const TEARS: Record<Mood, number> = { asleep: 0, calm: 0, fidget: 0, sway: 2, wail: 4 };
 
+/** 덜 되거나 망친 걸 꺼냈을 때의 피드백 문구 */
+function badServeText(need: Need, stage: "warming" | "spoiled"): string {
+  const why = stage === "warming" ? "아직 덜 됐어요" : NEED_META[need].spoiled;
+  return `${why}! 체력 −${BALANCE.badServeHp}`;
+}
+
 export function Crib() {
   const phase = useGame((s) => s.phase);
   const need = useGame((s) => s.need);
@@ -127,7 +133,9 @@ export function Crib() {
 
       <p className="crib__feedback" key={resultSeq}>
         {lastResult?.kind === "ok" && `+${lastResult.reward}`}
+        {lastResult?.kind === "ok" && lastResult.golden && " ✨"}
         {lastResult?.kind === "wrong" && "그게 아니에요!"}
+        {lastResult?.kind === "bad" && badServeText(lastResult.need, lastResult.stage)}
       </p>
     </section>
   );

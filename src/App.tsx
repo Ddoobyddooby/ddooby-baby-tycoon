@@ -4,6 +4,7 @@ import { useGame } from "./store/gameStore";
 import { Hud } from "./components/Hud";
 import { Crib } from "./components/Crib";
 import { ActionBar } from "./components/ActionBar";
+import { PrepSlots } from "./components/PrepSlots";
 import { DaySummary } from "./components/DaySummary";
 import { Shop } from "./components/Shop";
 
@@ -21,6 +22,7 @@ export default function App() {
     <main className="game">
       <Hud onOpenShop={() => setShopOpen(true)} />
       <Crib />
+      <PrepSlots />
       <ActionBar />
       {phase === "summary" && <DaySummary onOpenShop={() => setShopOpen(true)} />}
       {shopOpen && <Shop onClose={() => setShopOpen(false)} />}

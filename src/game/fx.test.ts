@@ -22,9 +22,10 @@ describe("fxFromTick", () => {
 });
 
 describe("fxFromResult", () => {
-  it("정답은 happy, 오답은 no, 헛손질은 효과 없음", () => {
-    expect(fxFromResult({ kind: "ok", reward: 10, combo: 1 })).toBe("happy");
+  it("정답은 happy, 오답·덜 되거나 망친 건 no, 헛손질은 효과 없음", () => {
+    expect(fxFromResult({ kind: "ok", reward: 10, combo: 1, golden: false })).toBe("happy");
     expect(fxFromResult({ kind: "wrong" })).toBe("no");
+    expect(fxFromResult({ kind: "bad", need: "hungry", stage: "spoiled" })).toBe("no");
     expect(fxFromResult({ kind: "idle" })).toBeNull();
   });
 });
