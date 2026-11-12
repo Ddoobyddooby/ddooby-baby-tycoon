@@ -9,3 +9,6 @@ coverage
 .vscode/*
 !.vscode/extensions.json
 *.tsbuildinfo
+
+# local agent state
+.omc/
